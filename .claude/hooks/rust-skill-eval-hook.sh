@@ -44,14 +44,18 @@ fi
 
 # Case-insensitive Rust signals: error codes, borrow/ownership/type vocabulary,
 # Rust crates/tooling, the .rs extension, attribute syntax, and the word "rust".
-ci_re='E0[0-9]{3,4}|\bborrow|\blifetime\b|moved[[:space:]]+value|cannot[[:space:]]+be[[:space:]]+sent|does[[:space:]]+not[[:space:]]+live[[:space:]]+long[[:space:]]+enough|trait[[:space:]]+bound|impl[[:space:]]+trait|\basync[[:space:]]+fn\b|\bcargo\b|\bclippy\b|\brustc\b|\.rs\b|\baxum\b|\bactix\b|\btokio\b|\bclap\b|\bserde\b|\bno_std\b|\bunsafe\b|\bwasm\b|#\[|\brust\b'
+ci_re='E0[0-9]{3,4}|\bborrow|\bownership\b|\blifetime\b|moved[[:space:]]+value|cannot[[:space:]]+be[[:space:]]+sent|does[[:space:]]+not[[:space:]]+live[[:space:]]+long[[:space:]]+enough|trait[[:space:]]+bound|impl[[:space:]]+trait|\basync[[:space:]]+fn\b|\bcargo\b|\bclippy\b|\brustc\b|\.rs\b|\baxum\b|\bactix\b|\btokio\b|\bclap\b|\bserde\b|\bno_std\b|\bunsafe\b|\bwasm\b|#\[|\brust\b'
 
-# Case-sensitive signals: the Send / Sync marker traits (capitalised, bounded).
-cs_re='\bSend\b|\bSync\b'
+# Case-sensitive signals: the Send / Sync marker traits. Match only in trait-bound
+# shapes (`: Send`, `+ Sync`, `!Send`, `dyn`/`impl`/`not` + `Send`, `Send +`, `Sync>`)
+# so an ordinary capitalised English verb ("Send me the script", "Sync the database")
+# does NOT trip the gate. A bare standalone "Send"/"Sync" almost always co-occurs with
+# another Rust signal already covered by ci_re (trait, rust, .rs, ...).
+cs_re='(:|\+|!)[[:space:]]*(Send|Sync)\b|\b(dyn|impl|not)[[:space:]]+(Send|Sync)\b|\b(Send|Sync)[[:space:]]*(\+|>)'
 
 # No Rust signal in the prompt -> emit nothing and exit 0 (default to silence).
-if printf '%s' "$prompt" | grep -qiE "$ci_re" \
-    || printf '%s' "$prompt" | grep -qE "$cs_re"; then
+if printf '%s\n' "$prompt" | grep -qiE "$ci_re" \
+    || printf '%s\n' "$prompt" | grep -qE "$cs_re"; then
     : # Rust signal present -> fall through and emit the block verbatim.
 else
     exit 0
